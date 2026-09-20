@@ -18,8 +18,8 @@ export const PROTECTED_SEGMENTS = [
   'settings',
 ] as const
 
-/** Sign-in and its follow-ups: pointless once you already have a session. */
-export const AUTH_SEGMENTS = ['sign-in', 'check-email'] as const
+/** The way in: pointless once you already have a session. */
+export const AUTH_SEGMENTS = ['sign-in'] as const
 
 export interface ParsedPath {
   locale: Locale
