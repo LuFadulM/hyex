@@ -109,54 +109,60 @@ it prints, enable the provider in Supabase → Authentication → Providers, and
 
 ## The way in
 
-Tap your name, type the shared code. That is the whole of it.
+There is none. Opening the app *is* the way in — no name to pick, no code to
+type, no link to wait for. `/` goes straight to today's session, or to the
+questionnaire if there is no plan yet. `/welcome` still holds the page that
+explains the app, for a link sent to someone who has never seen it.
 
-The sign-in screen lists the athletes by name — `athlete_roster()`, a
-`security definer` function that returns display names and nothing else, since
-a signed-out reader correctly sees no rows through row level security. Picking
-a name and entering the code signs that account in normally, so `auth.uid()` is
-what it always was and every policy in the schema keeps working untouched. The
-code *is* that account's Supabase password: it is checked by Supabase against
-its own hash, with its own rate limiting, and nothing in this app compares
-secrets itself. The session cookie is what "remembers this phone".
+Underneath, every request still runs as a real Supabase user. The middleware
+signs each visitor into one shared account (`src/lib/supabase/shared-account.ts`)
+before the request reaches a page, so `auth.uid()` is a genuine user id and every
+row level security policy in the schema keeps working exactly as written. That
+alternative — opening every table to `anon` — would be a far larger hole.
 
-Changing the code lives in Settings. It asks for the current one first: a
-session cookie is something a borrowed or unlocked phone already has, while the
-old code is something only its owner knows, so without that check a phone left
-on a bench would be enough to lock its owner out for good.
+That account's code comes from `HYEX_ACCOUNT_CODE` in the deployment's
+environment and is **not in this repository, which is public**. A password
+committed here would be published permanently and harvested by the bots that
+scan GitHub for exactly that, handing them the database's REST API directly,
+around the app. That it guards a door already standing open is not a reason to
+publish it. With no code configured the app serves `/welcome` and nothing else
+rather than guessing — so a deployment that has lost the variable fails visibly
+instead of silently locking everyone out, which is how the last outage went.
 
-Someone with no plan yet is still on the roster. Leaving them off would mean no
-way to reach onboarding, and the app already sends anyone without a finished
-questionnaire straight there.
+Signing in costs one redirect the first time a phone opens the app, because
+cookies only reach the app on the following request. The `hx` marker in the URL
+is what keeps that a single hop rather than a loop, and it is stripped before
+the athlete sees an address bar. After that the session cookie carries the
+phone, and nothing happens on the way in at all.
 
-**What this replaced, and why.** There were four ways in — a magic link, a
-typed six-digit code, an anonymous session and an email-and-password form — and
-between them they locked the household out for two days. The link needed an
-inbox and a mailer capped at two messages an hour; the anonymous session needed
-one project setting; the password form needed another. For two people who train
-together that was all cost. The lock did not go away, only the ceremony: the
-code still gates the open internet out of somebody's weight, birth date and
-health answers.
+**One athlete.** One account means one plan, one history, one set of answers.
+Two people using it are the same athlete to the app. Settings therefore has no
+sign-out (the next request would open the same session again) and no delete
+account (deleting it would leave the app with nothing to open); exporting your
+data is still there.
 
-One setting still matters: the **Email** provider under Authentication must be
-on, because password sign-in lives under it. If it is off, every attempt logs
-`400 Email signups are disabled` or `422 Email logins are disabled` in
-Authentication → Logs, no matter how many times the toggle appears to save —
-which is what happens when the project was provisioned through the Vercel
-marketplace rather than created on Supabase directly. The way out is a project
-whose dashboard you own: apply the migrations to it, move the rows across, and
-repoint the connection. Accounts can be seeded straight into `auth.users` with
-`crypt(<code>, gen_salt('bf'))`, an `email_confirmed_at`, and a matching
-`auth.identities` row — GoTrue looks accounts up through the identity, so
-without that row a sign-in fails on an account that otherwise looks complete.
+**What this replaced, and why.** There were five ways in over time — a magic
+link, a typed six-digit code, an anonymous session, an email-and-password form,
+and a name-and-shared-code screen. Every one of them failed on something outside
+the app: an inbox, a mailer capped at two messages an hour, a project setting
+nobody could reach. Between them they locked the household out of its own data
+for two days. Nothing on the way in can fail now, because there is nothing on
+the way in.
+
+**What this costs.** hyex.app is a public address, so anyone who finds it sees
+the plan, the weight, the birth date and the health answers behind it, and can
+write to them. That is understood and chosen: it is a two-person training app,
+not a service with customers. Anything that must not be public does not belong
+in it.
 
 ## Inviting people
 
-Anyone can sign up at `/en/sign-in` or `/es/sign-in` with their email; there are no
-passwords. To train together, one person creates a group under **Group**, then shares either
-the 6-character code or the invite link (`/<locale>/join/<CODE>`). Members see each other's
-display name, sessions completed this week and streak — never weights, body data, health
-answers or logs.
+Groups are a leftover from when the app had more than one account, and with a
+single shared athlete there is nobody to invite. The schema, the policies and
+the **Group** screen still work: one person creates a group, then shares the
+6-character code or the invite link (`/<locale>/join/<CODE>`). Members see each
+other's display name, sessions completed this week and streak — never weights,
+body data, health answers or logs.
 
 ## Languages
 

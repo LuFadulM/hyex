@@ -11,9 +11,9 @@ import { getCurrentUser } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 /**
- * Everything behind sign-in. A signed-out visitor is bounced by the middleware
- * before reaching here; this layout adds the second gate — no profile yet
- * means the questionnaire has not been completed.
+ * Everything behind the questionnaire. The middleware has already put a
+ * session on the request, so the only gate left here is the questionnaire
+ * itself: no profile yet means it has not been completed.
  */
 export default async function AppLayout({
   children,
@@ -26,12 +26,12 @@ export default async function AppLayout({
   if (!isLocale(locale)) notFound()
   setRequestLocale(locale)
 
-  // Without credentials there is no session to check; send the visitor to
-  // sign-in rather than failing the request.
-  if (!isSupabaseConfigured()) redirect({ href: '/sign-in', locale })
+  // With no database behind the deployment there is no session to be had,
+  // and nowhere to send anyone but the landing page.
+  if (!isSupabaseConfigured()) redirect({ href: '/welcome', locale })
 
   const user = await getCurrentUser()
-  if (!user) redirect({ href: '/sign-in', locale })
+  if (!user) redirect({ href: '/welcome', locale })
 
   const profile = await getProfile()
   if (!profile?.onboarded_at) redirect({ href: '/onboarding', locale })

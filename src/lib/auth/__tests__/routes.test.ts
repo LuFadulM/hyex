@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  isAuthPath,
   isProtectedPath,
   parsePath,
   routeDecision,
@@ -42,48 +41,36 @@ describe('path classification', () => {
   })
 
   it('leaves public routes alone', () => {
-    for (const path of ['/en', '/es', '/en/privacy', '/es/sign-in']) {
+    for (const path of ['/en', '/es', '/en/privacy', '/es/welcome']) {
       expect(isProtectedPath(path)).toBe(false)
     }
-  })
-
-  it('recognises the auth routes', () => {
-    expect(isAuthPath('/es/sign-in')).toBe(true)
-    expect(isAuthPath('/en/today')).toBe(false)
   })
 })
 
 describe('routeDecision', () => {
-  it('sends a signed-out visitor to sign-in in their own language', () => {
-    expect(routeDecision('/es/today', false)).toEqual({
-      kind: 'redirect',
-      to: '/es/sign-in?next=%2Ftoday',
-    })
-    expect(routeDecision('/en/today', false)).toEqual({
-      kind: 'redirect',
-      to: '/en/sign-in?next=%2Ftoday',
-    })
+  // Nobody should ever be signed out: the middleware opens a session before
+  // asking. This is the deployment-is-broken path, and all it must do is show
+  // something in the right language rather than fail.
+  it('falls back to the page that explains the app, in their own language', () => {
+    expect(routeDecision('/es/today', false)).toEqual({ kind: 'redirect', to: '/es/welcome' })
+    expect(routeDecision('/en/today', false)).toEqual({ kind: 'redirect', to: '/en/welcome' })
   })
 
-  it('remembers where they were going', () => {
+  it('carries nothing along, because there is nothing to come back from', () => {
     const decision = routeDecision('/es/plan/week/3', false)
 
     expect(decision.kind).toBe('redirect')
     if (decision.kind !== 'redirect') return
-    expect(decision.to).toContain(`next=${encodeURIComponent('/plan/week/3')}`)
+    expect(decision.to).not.toContain('next=')
   })
 
-  it('lets a signed-out visitor see public routes', () => {
+  it('lets anyone see the public routes', () => {
     expect(routeDecision('/es', false)).toEqual({ kind: 'allow' })
-    expect(routeDecision('/es/sign-in', false)).toEqual({ kind: 'allow' })
+    expect(routeDecision('/es/welcome', false)).toEqual({ kind: 'allow' })
   })
 
-  it('moves a signed-in user off the auth routes', () => {
-    expect(routeDecision('/es/sign-in', true)).toEqual({ kind: 'redirect', to: '/es/today' })
-  })
-
-  it('lets a signed-in user through everywhere else', () => {
-    for (const path of ['/en/today', '/es/plan', '/en', '/es/library']) {
+  it('lets a signed-in athlete through everywhere', () => {
+    for (const path of ['/en/today', '/es/plan', '/en', '/es/library', '/es/welcome']) {
       expect(routeDecision(path, true)).toEqual({ kind: 'allow' })
     }
   })
@@ -103,7 +90,8 @@ describe('safeRedirectPath', () => {
     expect(safeRedirectPath('', 'es')).toBe('/es/today')
   })
 
-  // An open redirect here would make every sign-in link a phishing vector.
+  // An open redirect here would make every link that carries one a phishing
+  // vector.
   it('refuses absolute URLs to other origins', () => {
     expect(safeRedirectPath(encodeURIComponent('https://evil.example/x'), 'en')).toBe('/en/today')
   })

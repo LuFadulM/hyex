@@ -8,13 +8,13 @@ import { getCurrentUser } from '@/lib/supabase/server'
 // Auth-gated: rendered per request, never prerendered at build time.
 export const dynamic = 'force-dynamic'
 
-/** Invite links land here; signed-out visitors go through sign-in and back. */
+/** Invite links land here; the middleware has already opened a session. */
 export default async function JoinPage({ params }: { params: Promise<{ locale: string; code: string }> }) {
   const { locale, code } = await params
   if (!isLocale(locale)) notFound()
   setRequestLocale(locale)
   const user = await getCurrentUser()
-  if (!user) redirect({ href: { pathname: '/sign-in', query: { next: `/join/${code}` } }, locale })
+  if (!user) redirect({ href: '/welcome', locale })
   await joinGroup(code)
   redirect({ href: '/group', locale })
 }

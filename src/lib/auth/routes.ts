@@ -18,9 +18,6 @@ export const PROTECTED_SEGMENTS = [
   'settings',
 ] as const
 
-/** The way in: pointless once you already have a session. */
-export const AUTH_SEGMENTS = ['sign-in'] as const
-
 export interface ParsedPath {
   locale: Locale
   /** Path with the locale prefix removed, always starting with a slash. */
@@ -49,11 +46,6 @@ export function isProtectedPath(pathname: string): boolean {
   return (PROTECTED_SEGMENTS as readonly string[]).includes(segment)
 }
 
-export function isAuthPath(pathname: string): boolean {
-  const { segment } = parsePath(pathname)
-  return (AUTH_SEGMENTS as readonly string[]).includes(segment)
-}
-
 export type RouteDecision =
   | { kind: 'allow' }
   | { kind: 'redirect'; to: string }
@@ -61,20 +53,18 @@ export type RouteDecision =
 /**
  * Decides what to do with a request.
  *
- * A signed-out visitor to a protected route is sent to sign-in **in their own
- * locale**, carrying where they were headed so they land there afterwards
- * rather than on a generic home screen.
+ * Nobody should ever reach here signed out: the middleware signs every visitor
+ * into the shared account before asking. If that failed — a deployment with no
+ * database behind it — the landing page is the one thing that still renders,
+ * in the visitor's own language, so they see the app rather than a stack
+ * trace. There is no sign-in screen to send them to and nothing for them to
+ * type, so nothing is carried along.
  */
 export function routeDecision(pathname: string, isSignedIn: boolean): RouteDecision {
-  const { locale, rest } = parsePath(pathname)
+  const { locale } = parsePath(pathname)
 
   if (!isSignedIn && isProtectedPath(pathname)) {
-    const next = encodeURIComponent(rest)
-    return { kind: 'redirect', to: `/${locale}/sign-in?next=${next}` }
-  }
-
-  if (isSignedIn && isAuthPath(pathname)) {
-    return { kind: 'redirect', to: `/${locale}/today` }
+    return { kind: 'redirect', to: `/${locale}/welcome` }
   }
 
   return { kind: 'allow' }
@@ -84,7 +74,7 @@ export function routeDecision(pathname: string, isSignedIn: boolean): RouteDecis
  * Validates a `next` parameter before redirecting to it.
  *
  * Only same-origin, locale-relative paths are allowed: an open redirect here
- * would turn every sign-in link into a phishing vector.
+ * would turn every link that carries one into a phishing vector.
  */
 export function safeRedirectPath(next: string | null, locale: Locale): string {
   const fallback = `/${locale}/today`

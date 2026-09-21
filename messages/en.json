@@ -16,7 +16,6 @@
     "headline": "Training that adapts to you",
     "body": "Answer a few questions and get a workout for every day — built around your goals, your schedule, your equipment and how your last session actually went.",
     "getStarted": "Get started",
-    "signIn": "Sign in",
     "nav": {
       "how": "How it works",
       "programs": "Your focus",
@@ -168,30 +167,6 @@
       "adaptedUp": "Your two-week trend moved faster than planned, so the target has come up a little.",
       "adaptedDown": "Your two-week trend is slower than planned, so the target has come down a little.",
       "recompPatience": "Recomposition is slow by design: eat at maintenance, lift hard, judge by the mirror and the bar over months, not the scale over days."
-    }
-  },
-  "auth": {
-    "signInTitle": "Hyex",
-    "signInBody": "Tap your name and enter the code. This phone will remember you afterwards.",
-    "whoIsTraining": "Who's training?",
-    "hello": "Hi {name}",
-    "codeLabel": "Code",
-    "codeHint": "The code you and your brother share. You only type it once on each phone.",
-    "enter": "Go",
-    "entering": "One moment…",
-    "notYou": "Not you? Pick someone else",
-    "noAthletes": "No one has set up a plan yet on this copy of Hyex.",
-    "signOut": "Sign out",
-    "errors": {
-      "wrongCode": "That code is not right. It's the one you share — check it and try again.",
-      "emailDisabled": "Signing in is switched off for this app right now. This is a setting on our side, not something you did.",
-      "signUpDisabled": "New accounts are switched off for this app right now.",
-      "emailNotConfirmed": "This account still needs confirming before it can be used.",
-      "weakPassword": "That code is too short. Use at least 8 characters.",
-      "samePassword": "That is the code you already have. Choose a different one.",
-      "rateLimited": "Too many tries for now. Wait a little while and try again.",
-      "passwordFailed": "That did not work. Try again in a moment.",
-      "signedOut": "You have been signed out. Tap your name again to continue."
     }
   },
   "coach": {
@@ -2343,30 +2318,7 @@
     "data": "Your data",
     "export": "Export my data (JSON)",
     "privacyLink": "Privacy",
-    "disclaimerTitle": "Not medical advice",
-    "signOut": "Sign out",
-    "deleteTitle": "Delete account",
-    "deleteHelp": "Deletes your account and every piece of data with it. This cannot be undone.",
-    "deleteConfirmLabel": "Type DELETE to confirm",
-    "deleteWord": "DELETE",
-    "deleteButton": "Delete my account",
-    "account": {
-      "title": "Your account",
-      "signedInAs": "Signed in as {email}"
-    },
-    "password": {
-      "title": "Code",
-      "change": "Change my code",
-      "current": "Current code",
-      "next": "New code",
-      "hint": "At least 8 characters. We ask for the current one so a borrowed phone cannot lock you out.",
-      "save": "Save new code",
-      "saving": "Saving…",
-      "changed": "Code changed. Use the new one on every phone from now on.",
-      "wrongCurrent": "That is not your current code.",
-      "noEmail": "This account cannot change its code."
-    },
-    "signOutHelp": "You will need the code again on this phone."
+    "disclaimerTitle": "Not medical advice"
   },
   "privacy": {
     "title": "Privacy",

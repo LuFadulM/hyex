@@ -15,12 +15,12 @@ export default async function OnboardingPage({ params }: { params: Promise<{ loc
   if (!isLocale(locale)) notFound()
   setRequestLocale(locale)
 
-  // Without credentials there is no session to check; send the visitor to
-  // sign-in rather than failing the request.
-  if (!isSupabaseConfigured()) redirect({ href: '/sign-in', locale })
+  // With no database behind the deployment there is no session to be had,
+  // and nowhere to send anyone but the landing page.
+  if (!isSupabaseConfigured()) redirect({ href: '/welcome', locale })
 
   const user = await getCurrentUser()
-  if (!user) redirect({ href: '/sign-in', locale })
+  if (!user) redirect({ href: '/welcome', locale })
 
   const [profile, answers] = await Promise.all([getProfile(), getActiveAnswers()])
   const t = await getTranslations('onboarding')

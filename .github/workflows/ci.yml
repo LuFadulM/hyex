@@ -108,6 +108,11 @@ jobs:
           export NEXT_PUBLIC_SUPABASE_ANON_KEY="${ANON_KEY:-${PUBLISHABLE_KEY:-}}"
           export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-${SECRET_KEY:-}}"
           test -n "$NEXT_PUBLIC_SUPABASE_URL" -a -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" -a -n "$SUPABASE_SERVICE_ROLE_KEY"
+          # The shared athlete, for the stack that exists for the next four
+          # minutes and is thrown away. The real one's code lives in the
+          # deployment's environment and is not in this repository.
+          export HYEX_ACCOUNT_EMAIL="athlete@e2e.local"
+          export HYEX_ACCOUNT_CODE="e2e-shared-athlete"
           npm run build
           npm run e2e
       - uses: actions/upload-artifact@v4

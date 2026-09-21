@@ -16,7 +16,6 @@
     "headline": "Entrenamiento que se adapta a ti",
     "body": "Responde unas preguntas y recibe un entrenamiento para cada día — armado según tus metas, tus horarios, tu equipo y cómo te fue de verdad en la última sesión.",
     "getStarted": "Empezar",
-    "signIn": "Iniciar sesión",
     "nav": {
       "how": "Cómo funciona",
       "programs": "Tu enfoque",
@@ -168,30 +167,6 @@
       "adaptedUp": "Tu tendencia de dos semanas fue más rápida de lo planeado, así que el objetivo subió un poco.",
       "adaptedDown": "Tu tendencia de dos semanas va más lenta de lo planeado, así que el objetivo bajó un poco.",
       "recompPatience": "La recomposición es lenta a propósito: come en mantenimiento, entrena fuerte y juzga por el espejo y la barra en meses, no por la báscula en días."
-    }
-  },
-  "auth": {
-    "signInTitle": "Hyex",
-    "signInBody": "Toca tu nombre y escribe el código. Este teléfono te va a recordar después.",
-    "whoIsTraining": "¿Quién va a entrenar?",
-    "hello": "Hola {name}",
-    "codeLabel": "Código",
-    "codeHint": "El código que compartes con tu hermano. Solo lo escribes una vez en cada teléfono.",
-    "enter": "Entrar",
-    "entering": "Un momento…",
-    "notYou": "¿No eres tú? Elige a otra persona",
-    "noAthletes": "Todavía nadie ha creado un plan en esta copia de Hyex.",
-    "signOut": "Cerrar sesión",
-    "errors": {
-      "wrongCode": "Ese código no es correcto. Es el que comparten: revísalo e inténtalo de nuevo.",
-      "emailDisabled": "Entrar está desactivado en esta app ahora mismo. Es un ajuste de nuestro lado, no algo que hiciste tú.",
-      "signUpDisabled": "La creación de cuentas está desactivada en esta app ahora mismo.",
-      "emailNotConfirmed": "Esta cuenta todavía necesita confirmarse antes de poder usarse.",
-      "weakPassword": "Ese código es muy corto. Usa al menos 8 caracteres.",
-      "samePassword": "Ese es el código que ya tienes. Elige uno diferente.",
-      "rateLimited": "Demasiados intentos por ahora. Espera un poco e inténtalo de nuevo.",
-      "passwordFailed": "No funcionó. Inténtalo de nuevo en un momento.",
-      "signedOut": "Se cerró tu sesión. Toca tu nombre otra vez para continuar."
     }
   },
   "coach": {
@@ -2343,30 +2318,7 @@
     "data": "Tus datos",
     "export": "Exportar mis datos (JSON)",
     "privacyLink": "Privacidad",
-    "disclaimerTitle": "No es consejo médico",
-    "signOut": "Cerrar sesión",
-    "deleteTitle": "Eliminar cuenta",
-    "deleteHelp": "Elimina tu cuenta y todos tus datos. No se puede deshacer.",
-    "deleteConfirmLabel": "Escribe ELIMINAR para confirmar",
-    "deleteWord": "ELIMINAR",
-    "deleteButton": "Eliminar mi cuenta",
-    "account": {
-      "title": "Tu cuenta",
-      "signedInAs": "Sesión iniciada como {email}"
-    },
-    "password": {
-      "title": "Código",
-      "change": "Cambiar mi código",
-      "current": "Código actual",
-      "next": "Código nuevo",
-      "hint": "Mínimo 8 caracteres. Pedimos el actual para que un teléfono prestado no pueda dejarte fuera.",
-      "save": "Guardar código nuevo",
-      "saving": "Guardando…",
-      "changed": "Código cambiado. Usa el nuevo en todos los teléfonos desde ahora.",
-      "wrongCurrent": "Ese no es tu código actual.",
-      "noEmail": "Esta cuenta no puede cambiar su código."
-    },
-    "signOutHelp": "Vas a necesitar el código otra vez en este teléfono."
+    "disclaimerTitle": "No es consejo médico"
   },
   "privacy": {
     "title": "Privacidad",

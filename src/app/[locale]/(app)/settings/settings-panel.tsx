@@ -4,8 +4,7 @@ import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import type { Locale } from '@/i18n/routing'
-import { signOut } from '@/app/[locale]/sign-in/actions'
-import { deleteMyAccount, exportMyData, updateLocale, updateTimezone, updateUnits } from '@/lib/actions/account'
+import { exportMyData, updateLocale, updateTimezone, updateUnits } from '@/lib/actions/account'
 
 interface Props {
   locale: Locale
@@ -22,7 +21,6 @@ export function SettingsPanel({ locale, units, timezone, displayName }: Props) {
   const pathname = usePathname()
   const [pending, start] = useTransition()
   const [tz, setTz] = useState(timezone)
-  const [confirmDelete, setConfirmDelete] = useState('')
   const field = 'min-h-11 w-full rounded-lg border border-(--color-border) bg-(--color-surface) px-3'
   const row = 'flex flex-col gap-2 rounded-xl border border-(--color-border) bg-(--color-surface) p-4'
 
@@ -78,18 +76,6 @@ export function SettingsPanel({ locale, units, timezone, displayName }: Props) {
         <p className="text-sm text-(--color-ink-muted)">{tD('long')}</p>
       </section>
 
-      <section className={row}>
-        <button type="button" disabled={pending} onClick={() => start(async () => { await signOut(locale) })} className="min-h-11 rounded-lg border border-(--color-border) font-semibold">{t('signOut')}</button>
-        <p className="text-xs text-(--color-ink-muted)">{t('signOutHelp')}</p>
-      </section>
-
-      <section className={`${row} border-(--color-plate-red)`}>
-        <h2 className="font-display text-lg font-bold text-(--color-plate-red)">{t('deleteTitle')}</h2>
-        <p className="text-sm text-(--color-ink-muted)">{t('deleteHelp')}</p>
-        <label className="text-sm" htmlFor="confirm">{t('deleteConfirmLabel')}</label>
-        <input id="confirm" className={field} value={confirmDelete} onChange={(e) => setConfirmDelete(e.target.value)} autoComplete="off" />
-        <button type="button" disabled={pending || confirmDelete !== t('deleteWord')} onClick={() => start(async () => { await deleteMyAccount(locale) })} className="min-h-11 rounded-lg bg-(--color-plate-red) font-semibold text-white disabled:opacity-40">{t('deleteButton')}</button>
-      </section>
     </div>
   )
 }

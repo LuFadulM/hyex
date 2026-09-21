@@ -2,29 +2,26 @@ import { expect, test } from '@playwright/test'
 
 /** Runs without Supabase: the public surface must work with no backend at all. */
 test('serves both languages and the install manifest', async ({ page }) => {
-  await page.goto('/en')
+  // `/welcome` is the page that explains the app. The root is the app itself.
+  await page.goto('/en/welcome')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Training that adapts to you')
   await expect(page.getByRole('link', { name: 'Get started' }).first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
   // The language switch keeps the visitor on the page they were reading.
   await page.getByRole('link', { name: 'Español' }).first().click()
-  await expect(page).toHaveURL(/\/es$/)
+  await expect(page).toHaveURL(/\/es\/welcome$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Entrenamiento que se adapta a ti')
   await expect(page.getByRole('link', { name: 'Empezar' }).first()).toBeVisible()
-  await page.getByRole('link', { name: 'Iniciar sesión' }).first().click()
-  await expect(page).toHaveURL(/\/es\/sign-in$/)
-  // What this screen renders depends on who has a plan, so assert the line
-  // that is there either way rather than a name or a button.
-  await expect(page.getByText(/Toca tu nombre y escribe el c\u00f3digo/)).toBeVisible()
+  // Nothing asks who you are: the way in is having opened the app.
+  await expect(page.getByRole('link', { name: /Iniciar sesión|Sign in/ })).toHaveCount(0)
   const manifest = await page.request.get('/manifest.webmanifest')
   expect(manifest.ok()).toBe(true)
   expect((await manifest.json()).name).toBe('Hyex')
 })
 
 test('has no horizontal overflow at 390px', async ({ page }) => {
-  // Both landings: Spanish has the longest words, and any overflow widens the
+  // Both pages: Spanish has the longest words, and any overflow widens the
   // mobile layout viewport, which also throws off taps near the bottom.
-  for (const path of ['/en', '/es', '/es/sign-in', '/en/privacy']) {
+  for (const path of ['/en/welcome', '/es/welcome', '/en/privacy']) {
     await page.goto(path)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
     expect(overflow, path).toBe(false)
