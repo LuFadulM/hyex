@@ -24,6 +24,32 @@ test.describe('accounts', () => {
   /** Long enough to pass, and nothing like a real one. */
   const PASSPHRASE = 'three-word-passphrase'
 
+  /**
+   * Finds one account by address, across however many pages there are.
+   *
+   * `listUsers()` is paginated and answers with the first fifty by default, so
+   * on a suite where every test makes an account, one page is not the whole
+   * list. Asking for page one and reading a miss as "the account does not
+   * exist" is how this test failed while the app was working perfectly — the
+   * same run proved the account was really there, by refusing to create a
+   * second one on that address.
+   *
+   * The error is raised rather than swallowed for the same reason: the first
+   * version destructured `data` alone, so a failed call and an empty page were
+   * indistinguishable, and the message said neither.
+   */
+  async function findAccount(email: string) {
+    const perPage = 200
+    for (let page = 1; page <= 25; page++) {
+      const { data, error } = await admin().auth.admin.listUsers({ page, perPage })
+      if (error) throw error
+      const hit = data.users.find((u) => u.email === email)
+      if (hit) return hit
+      if (data.users.length < perPage) return undefined
+    }
+    return undefined
+  }
+
   async function createAccountWith(page: import('@playwright/test').Page, email: string) {
     await page.goto('/en/sign-in')
     await page.getByRole('button', { name: TO_CREATE }).click()
@@ -43,8 +69,7 @@ test.describe('accounts', () => {
 
     // Signing up has to leave a usable session behind, not an account waiting
     // on a link: it exists *and* it is confirmed.
-    const { data } = await admin().auth.admin.listUsers()
-    const created = data?.users.find((u) => u.email === email)
+    const created = await findAccount(email)
     expect(created, 'the account exists').toBeTruthy()
     expect(created?.email_confirmed_at, 'and needs no message to be opened').toBeTruthy()
 
