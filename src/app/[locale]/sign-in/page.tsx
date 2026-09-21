@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { isLocale } from '@/i18n/routing'
-import { getRoster } from '@/lib/data/roster'
 import { SignInForm } from './sign-in-form'
 
 export default async function SignInPage({
@@ -16,13 +15,13 @@ export default async function SignInPage({
 
   setRequestLocale(locale)
   const { next } = await searchParams
-  const [t, roster] = await Promise.all([getTranslations('auth'), getRoster()])
+  const t = await getTranslations('auth')
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
       <h1 className="text-3xl font-bold">{t('signInTitle')}</h1>
       <p className="text-(--color-ink-muted)">{t('signInBody')}</p>
-      <SignInForm locale={locale} next={next} roster={roster} />
+      <SignInForm locale={locale} next={next} />
     </main>
   )
 }

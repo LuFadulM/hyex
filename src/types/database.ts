@@ -444,11 +444,6 @@ export type Database = {
       training_streak: { Args: { p_user_id: string }; Returns: number }
       is_group_member: { Args: { p_group_id: string; p_user_id: string }; Returns: boolean }
       is_group_owner: { Args: { p_group_id: string; p_user_id: string }; Returns: boolean }
-      athlete_roster: {
-        Args: Record<string, never>
-        Returns: { user_id: string; display_name: string }[]
-      }
-      athlete_email: { Args: { p_user_id: string }; Returns: string }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

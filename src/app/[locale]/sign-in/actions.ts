@@ -9,65 +9,90 @@ import { safeRedirectPath } from '@/lib/auth/routes'
 import { createClient } from '@/lib/supabase/server'
 
 export interface SignInState {
-  /** A message key, never prose — the form translates it (PLAN.md §4). */
+  /** A message key, never prose — the form translates it. */
   errorKey?: string
 }
 
-const enterSchema = z.object({
-  userId: z.string().uuid(),
-  code: z.string().min(1).max(72),
+/**
+ * Eight characters, and no other rule.
+ *
+ * Supabase's own floor is six. Length is the part that actually matters, and
+ * demanding a symbol and a digit mostly produces `Password1!` written on a
+ * sticky note, so this asks for length and stops there. The cap is Supabase's:
+ * bcrypt ignores anything past 72 bytes.
+ */
+const credentials = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(72),
   locale: z.string().refine(isLocale),
   next: z.string().optional(),
 })
 
-/**
- * The only way in: pick your name, type the shared code.
- *
- * What this replaced was four ways in — a magic link, a typed six-digit code,
- * an anonymous session and an email-and-password form — and between them they
- * managed to lock the household out for two days. The link needed an inbox and
- * a mailer capped at two messages an hour; the anonymous session needed a
- * project setting; the password form needed another. None of that is worth it
- * for two people who train together.
- *
- * Underneath, this is still a real sign-in. The code is that account's Supabase
- * password, checked by Supabase against its own hash with its own rate limiting
- * — nothing here compares secrets itself. So the session is a normal one,
- * `auth.uid()` is what it always was, and every row level security policy keeps
- * working with no change at all. What went away is the ceremony, not the lock.
- *
- * The session cookie is what "remembers this device": after the first time, the
- * middleware refreshes it and nobody types anything again.
- */
-export async function enterAsAthlete(
-  _previous: SignInState,
-  formData: FormData,
-): Promise<SignInState> {
-  const parsed = enterSchema.safeParse({
-    userId: formData.get('userId'),
-    code: formData.get('code'),
+function parse(formData: FormData) {
+  return credentials.safeParse({
+    email: formData.get('email'),
+    password: formData.get('password'),
     locale: formData.get('locale'),
     next: formData.get('next') ?? undefined,
   })
-  if (!parsed.success) return { errorKey: 'auth.errors.wrongCode' }
+}
 
-  const { userId, code, locale, next } = parsed.data
+/**
+ * Signing in with an address and a password.
+ *
+ * Nothing is sent anywhere and nothing has to arrive: the password is checked
+ * by Supabase against its own hash, with its own rate limiting, and this app
+ * never compares a secret itself. Every earlier way in depended on a message
+ * being delivered or a provider being switched on, and every one of them broke.
+ */
+export async function logIn(_previous: SignInState, formData: FormData): Promise<SignInState> {
+  const parsed = parse(formData)
+  if (!parsed.success) return { errorKey: 'auth.errors.invalidCredentials' }
+
+  const { email, password, locale, next } = parsed.data
   const supabase = await createClient()
-
-  // The picked name is a profile id; the address behind it never reaches the
-  // browser, and the roster never carried it in the first place.
-  const { data: email, error: lookupError } = await supabase.rpc('athlete_email', { p_user_id: userId })
-  if (lookupError || !email) return { errorKey: 'auth.errors.wrongCode' }
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password: code })
-  if (error) {
-    const kind = classifyPasswordFailure(error)
-    // "Those credentials do not match" means the code was wrong, and saying so
-    // reveals nothing here: the name was already on the screen.
-    return { errorKey: kind === 'invalidCredentials' ? 'auth.errors.wrongCode' : `auth.errors.${kind}` }
-  }
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) return { errorKey: `auth.errors.${classifyPasswordFailure(error)}` }
 
   redirect(safeRedirectPath(next ?? null, locale) as Route)
+}
+
+/**
+ * Creating an account.
+ *
+ * `signUp` returns a session straight away when the project does not require
+ * email confirmation, and that is the shape this app is built for — the person
+ * lands in the questionnaire, not in an inbox. When confirmation *is* required
+ * the session comes back null and the account cannot be used until a link is
+ * clicked, which is worth saying plainly rather than redirecting someone into a
+ * screen that bounces them back out.
+ *
+ * Accounts are created through this, never by hand in SQL. Writing a row into
+ * `auth.users` directly leaves `confirmation_token` and its siblings NULL where
+ * the auth service scans them into non-nullable strings, and every password
+ * sign-in for that account then fails with a 500 that says nothing about what
+ * is wrong. That is not a hypothetical: it is what silently broke every
+ * account this project had.
+ */
+export async function createAccount(
+  _previous: SignInState,
+  formData: FormData,
+): Promise<SignInState> {
+  const parsed = parse(formData)
+  if (!parsed.success) {
+    const email = String(formData.get('email') ?? '')
+    return { errorKey: email.includes('@') ? 'auth.errors.weakPassword' : 'auth.errors.badEmail' }
+  }
+
+  const { email, password, locale, next } = parsed.data
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) return { errorKey: `auth.errors.${classifyPasswordFailure(error)}` }
+  if (!data.session) return { errorKey: 'auth.errors.confirmationRequired' }
+
+  // Straight to the questionnaire: a new account has no plan, and the app
+  // would send them there from anywhere else anyway.
+  redirect(safeRedirectPath(next ?? '/onboarding', locale) as Route)
 }
 
 export async function signOut(locale: string) {

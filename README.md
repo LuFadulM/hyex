@@ -109,51 +109,64 @@ it prints, enable the provider in Supabase → Authentication → Providers, and
 
 ## The way in
 
-Tap your name, type the shared code. That is the whole of it.
+An email address and a password. Nothing is sent to anyone, and nothing has to
+arrive.
 
-The sign-in screen lists the athletes by name — `athlete_roster()`, a
-`security definer` function that returns display names and nothing else, since
-a signed-out reader correctly sees no rows through row level security. Picking
-a name and entering the code signs that account in normally, so `auth.uid()` is
-what it always was and every policy in the schema keeps working untouched. The
-code *is* that account's Supabase password: it is checked by Supabase against
-its own hash, with its own rate limiting, and nothing in this app compares
-secrets itself. The session cookie is what "remembers this phone".
+`/<locale>/sign-in` does both jobs on one screen: the same two fields log you
+in or create an account, and a link below the button switches between them.
+Creating an account drops you straight into the questionnaire. Supabase checks
+the password against its own hash with its own rate limiting, so this app never
+compares a secret itself, and a wrong password reads exactly the same as an
+address with no account behind it — the form must not become a way to ask who
+uses Hyex.
 
-Changing the code lives in Settings. It asks for the current one first: a
-session cookie is something a borrowed or unlocked phone already has, while the
-old code is something only its owner knows, so without that check a phone left
-on a bench would be enough to lock its owner out for good.
+Passwords are eight characters and no other rule. Length is what matters, and
+demanding a symbol and a digit mostly produces `Password1!` on a sticky note.
 
-Someone with no plan yet is still on the roster. Leaving them off would mean no
-way to reach onboarding, and the app already sends anyone without a finished
-questionnaire straight there.
+**Accounts are created by the auth API, never by hand in SQL.** This is the
+trap that cost days, so it is worth stating exactly. GoTrue scans
+`confirmation_token`, `recovery_token`, `email_change_token_new` and
+`email_change` into non-nullable Go strings, and Supabase's schema defaults all
+four to `''`. A row inserted straight into `auth.users` without them leaves
+them `NULL`, and then **every** password sign-in for that account fails with:
 
-**What this replaced, and why.** There were four ways in — a magic link, a
-typed six-digit code, an anonymous session and an email-and-password form — and
-between them they locked the household out for two days. The link needed an
-inbox and a mailer capped at two messages an hour; the anonymous session needed
-one project setting; the password form needed another. For two people who train
-together that was all cost. The lock did not go away, only the ceremony: the
-code still gates the open internet out of somebody's weight, birth date and
-health answers.
+```
+POST /token  →  500
+error finding user: sql: Scan error on column index 3, name "confirmation_token":
+converting NULL to string is unsupported
+```
 
-One setting still matters: the **Email** provider under Authentication must be
-on, because password sign-in lives under it. If it is off, every attempt logs
-`400 Email signups are disabled` or `422 Email logins are disabled` in
-Authentication → Logs, no matter how many times the toggle appears to save —
-which is what happens when the project was provisioned through the Vercel
-marketplace rather than created on Supabase directly. The way out is a project
-whose dashboard you own: apply the migrations to it, move the rows across, and
-repoint the connection. Accounts can be seeded straight into `auth.users` with
-`crypt(<code>, gen_salt('bf'))`, an `email_confirmed_at`, and a matching
-`auth.identities` row — GoTrue looks accounts up through the identity, so
-without that row a sign-in fails on an account that otherwise looks complete.
+It is a 500 with `error_code: unexpected_failure`, so the app sees an
+unexplained server error, the person sees "that did not work", and nothing
+anywhere names the real problem. One such row also breaks the admin list
+endpoint for the **whole project** — `listUsers()` reads every row and answers
+`Database error finding users` — which is how the end-to-end suite caught the
+same fault sitting in `supabase/seed.sql`, where it had been making the local
+demo account unusable all along. Every account this project had was seeded that
+way, which is why no sign-in had ever succeeded here — `auth.audit_log_entries`
+was empty. It was never a provider setting. If an account must be made outside
+the sign-up form, use the admin API (`auth.admin.createUser`), which fills those
+columns; if one is already broken, `update auth.users set confirmation_token =
+'', recovery_token = '', email_change_token_new = '', email_change = ''` repairs
+it.
+
+**Two project settings still matter.** The Email provider must be on, or every
+attempt answers `422 Email logins are disabled`. "Confirm email" must be off, or
+`signUp` returns no session and the account waits on a message from a mailer
+capped at two an hour — the sign-up form reports that case in as many words
+rather than redirecting into a screen that bounces straight back out. Anonymous
+sign-ins are off and no longer used; the log still shows
+`422: Anonymous sign-ins are disabled` from when they were.
+
+There is no password reset, because it needs a working mailer. Resetting one is
+a support job: `update auth.users set encrypted_password = crypt('<new>',
+gen_salt('bf')) where email = '...'`, which is safe precisely because the row
+already exists and its token columns are already correct.
 
 ## Inviting people
 
-Anyone can sign up at `/en/sign-in` or `/es/sign-in` with their email; there are no
-passwords. To train together, one person creates a group under **Group**, then shares either
+Anyone can create an account at `/en/sign-in` or `/es/sign-in` with an email and a
+password. To train together, one person creates a group under **Group**, then shares either
 the 6-character code or the invite link (`/<locale>/join/<CODE>`). Members see each other's
 display name, sessions completed this week and streak — never weights, body data, health
 answers or logs.
