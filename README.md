@@ -138,7 +138,11 @@ converting NULL to string is unsupported
 
 It is a 500 with `error_code: unexpected_failure`, so the app sees an
 unexplained server error, the person sees "that did not work", and nothing
-anywhere names the real problem. Every account this project had was seeded that
+anywhere names the real problem. One such row also breaks the admin list
+endpoint for the **whole project** — `listUsers()` reads every row and answers
+`Database error finding users` — which is how the end-to-end suite caught the
+same fault sitting in `supabase/seed.sql`, where it had been making the local
+demo account unusable all along. Every account this project had was seeded that
 way, which is why no sign-in had ever succeeded here — `auth.audit_log_entries`
 was empty. It was never a provider setting. If an account must be made outside
 the sign-up form, use the admin API (`auth.admin.createUser`), which fills those

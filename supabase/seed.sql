@@ -7,10 +7,22 @@
 --
 -- Runs only against the local stack (`supabase start` / `supabase db reset`).
 
+-- The four empty strings at the end are not decoration.
+--
+-- The auth service scans `confirmation_token`, `recovery_token`,
+-- `email_change_token_new` and `email_change` into non-nullable Go strings,
+-- and unlike their siblings these four have no default, so a hand-written row
+-- leaves them NULL. Then every password sign-in for this account answers 500
+-- with `converting NULL to string is unsupported`, and — because the admin
+-- list endpoint reads every row — one such account breaks `listUsers()` for
+-- the whole project. Both were seen for real: in production, where it made
+-- every account unusable for days while nothing named the cause, and in CI,
+-- where this very row failed the end-to-end suite.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, created_at, updated_at,
-  raw_app_meta_data, raw_user_meta_data
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token, email_change_token_new, email_change
 )
 values (
   '00000000-0000-0000-0000-000000000000',
@@ -21,9 +33,28 @@ values (
   crypt('demo-password', gen_salt('bf')),
   now(), now(), now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  '{}'::jsonb
+  '{}'::jsonb,
+  '', '', '', ''
 )
 on conflict (id) do nothing;
+
+-- The identity is what the auth service looks accounts up through: without it
+-- a sign-in fails on a user that otherwise looks complete.
+insert into auth.identities (
+  provider_id, user_id, identity_data, provider, created_at, updated_at
+)
+values (
+  'd0000000-0000-4000-8000-000000000001',
+  'd0000000-0000-4000-8000-000000000001',
+  jsonb_build_object(
+    'sub', 'd0000000-0000-4000-8000-000000000001',
+    'email', 'demo@hyex.local',
+    'email_verified', true,
+    'phone_verified', false),
+  'email',
+  now(), now()
+)
+on conflict do nothing;
 
 insert into public.profiles (
   user_id, display_name, locale, timezone, units,
