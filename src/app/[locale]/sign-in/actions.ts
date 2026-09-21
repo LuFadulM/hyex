@@ -60,19 +60,26 @@ export async function logIn(_previous: SignInState, formData: FormData): Promise
 /**
  * Creating an account.
  *
- * `signUp` returns a session straight away when the project does not require
- * email confirmation, and that is the shape this app is built for — the person
- * lands in the questionnaire, not in an inbox. When confirmation *is* required
- * the session comes back null and the account cannot be used until a link is
- * clicked, which is worth saying plainly rather than redirecting someone into a
- * screen that bounces them back out.
+ * `signUp` hands back a session directly when the project does not require
+ * email confirmation. When it does, the session comes back null — and this
+ * project requires it, with the setting out of reach. So rather than stopping
+ * there and telling someone to go and find a message, this signs them in with
+ * the credentials they just chose.
  *
- * Accounts are created through this, never by hand in SQL. Writing a row into
- * `auth.users` directly leaves `confirmation_token` and its siblings NULL where
- * the auth service scans them into non-nullable strings, and every password
- * sign-in for that account then fails with a 500 that says nothing about what
- * is wrong. That is not a hypothetical: it is what silently broke every
- * account this project had.
+ * That works because a database trigger confirms every account as the row is
+ * written (`20260921170823_autoconfirm_new_accounts`). The account is usable
+ * the instant it exists, so the sign-in that follows succeeds and the person
+ * lands in the questionnaire having typed an address and a password, once.
+ *
+ * The fallback still says something true if that ever stops holding: a session
+ * that cannot be got at all means the account really is waiting on a link.
+ *
+ * Accounts are created through this, never by hand in SQL. A row written into
+ * `auth.users` directly leaves `confirmation_token` and its siblings NULL,
+ * where the auth service scans them into non-nullable strings, and every
+ * password sign-in for that account then fails with a 500 that names nothing.
+ * That is not hypothetical: it silently broke every account this project had,
+ * and the same trigger now repairs it.
  */
 export async function createAccount(
   _previous: SignInState,
@@ -88,7 +95,11 @@ export async function createAccount(
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) return { errorKey: `auth.errors.${classifyPasswordFailure(error)}` }
-  if (!data.session) return { errorKey: 'auth.errors.confirmationRequired' }
+
+  if (!data.session) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) return { errorKey: 'auth.errors.confirmationRequired' }
+  }
 
   // Straight to the questionnaire: a new account has no plan, and the app
   // would send them there from anywhere else anyway.

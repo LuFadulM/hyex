@@ -4,9 +4,20 @@
 create extension if not exists "pgcrypto";
 create schema if not exists auth;
 
+-- The token columns are here because a migration now writes to them: the
+-- trigger that confirms new accounts also repairs these four, which the auth
+-- service scans into non-nullable strings. Without them the trigger would
+-- fail the moment this suite inserts a user, which is the point — the shim
+-- has to carry every column the migrations touch, not only the ones the
+-- policies read.
 create table if not exists auth.users (
   id uuid primary key default gen_random_uuid(),
-  email text unique
+  email text unique,
+  email_confirmed_at timestamptz,
+  confirmation_token text,
+  recovery_token text,
+  email_change_token_new text,
+  email_change text
 );
 
 -- Mirrors Supabase's auth.uid(): reads the subject from a request-scoped GUC.
