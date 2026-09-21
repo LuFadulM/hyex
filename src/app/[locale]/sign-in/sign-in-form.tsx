@@ -3,79 +3,72 @@
 import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { Locale } from '@/i18n/routing'
-import type { Athlete } from '@/lib/data/roster'
-import { enterAsAthlete, type SignInState } from './actions'
+import { createAccount, logIn, type SignInState } from './actions'
+
+type Mode = 'logIn' | 'createAccount'
 
 /**
- * Pick your name, type the shared code.
+ * One address, one password, two buttons' worth of intent.
  *
- * Two people who train together do not need to tell an app who they are by
- * typing an address: the app already knows both of them. Tapping a name is the
- * whole identification step, and the code is what keeps the open internet out
- * of somebody's weight and health answers.
- *
- * Once in, the session cookie keeps this device signed in, so this screen is
- * something each phone sees once.
+ * The same two fields serve both jobs, so the form does not move around under
+ * anyone's thumbs when they switch; only the button and the link below it
+ * change. Keeping the typed values across the switch matters more than it
+ * looks: the usual reason to switch is having guessed wrong about whether you
+ * already have an account, and re-typing an address on a phone to correct that
+ * guess is exactly the friction this app keeps failing on.
  */
-export function SignInForm({
-  locale,
-  next,
-  roster,
-}: {
-  locale: Locale
-  next?: string
-  roster: Athlete[]
-}) {
+export function SignInForm({ locale, next }: { locale: Locale; next?: string }) {
   const t = useTranslations('auth')
-  const [picked, setPicked] = useState<Athlete | null>(roster.length === 1 ? roster[0]! : null)
-  const [state, formAction, pending] = useActionState<SignInState, FormData>(enterAsAthlete, {})
+  const [mode, setMode] = useState<Mode>('logIn')
+  const [state, formAction, pending] = useActionState<SignInState, FormData>(
+    mode === 'logIn' ? logIn : createAccount,
+    {},
+  )
 
-  if (roster.length === 0) {
-    return <p className="text-sm text-(--color-ink-muted)">{t('noAthletes')}</p>
-  }
-
-  if (!picked) {
-    return (
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-medium">{t('whoIsTraining')}</p>
-        {roster.map((athlete) => (
-          <button
-            key={athlete.userId}
-            type="button"
-            onClick={() => setPicked(athlete)}
-            className="min-h-14 rounded-xl bg-(--color-plate-blue) px-4 font-display text-lg font-bold text-white"
-          >
-            {athlete.displayName}
-          </button>
-        ))}
-      </div>
-    )
-  }
+  const other: Mode = mode === 'logIn' ? 'createAccount' : 'logIn'
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="userId" value={picked.userId} />
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
-      <p className="font-display text-lg font-bold">{t('hello', { name: picked.displayName })}</p>
-
-      <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="code">
-        {t('codeLabel')}
+      <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="email">
+        {t('emailLabel')}
         <input
-          id="code"
-          name="code"
-          type="password"
-          autoComplete="current-password"
-          autoFocus
+          id="email"
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
           required
-          aria-describedby={state.errorKey ? 'sign-in-error' : 'code-hint'}
+          aria-describedby={state.errorKey ? 'sign-in-error' : undefined}
           aria-invalid={state.errorKey ? true : undefined}
           className="min-h-12 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 text-base"
         />
       </label>
 
-      <p id="code-hint" className="text-xs text-(--color-ink-muted)">{t('codeHint')}</p>
+      <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="password">
+        {t('passwordLabel')}
+        <input
+          id="password"
+          name="password"
+          type="password"
+          // Telling the browser which job this is lets it offer the saved
+          // password when logging in, and offer to save a new one when not.
+          autoComplete={mode === 'logIn' ? 'current-password' : 'new-password'}
+          required
+          minLength={8}
+          aria-describedby={state.errorKey ? 'sign-in-error' : 'password-hint'}
+          aria-invalid={state.errorKey ? true : undefined}
+          className="min-h-12 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 text-base"
+        />
+      </label>
+
+      <p id="password-hint" className="text-xs text-(--color-ink-muted)">
+        {t('passwordHint')}
+      </p>
 
       {state.errorKey ? (
         <p id="sign-in-error" role="alert" className="text-sm text-(--color-plate-red)">
@@ -88,18 +81,16 @@ export function SignInForm({
         disabled={pending}
         className="min-h-12 rounded-lg bg-(--color-plate-blue) px-4 font-semibold text-white disabled:opacity-60"
       >
-        {pending ? t('entering') : t('enter')}
+        {pending ? t('working') : t(mode)}
       </button>
 
-      {roster.length > 1 && (
-        <button
-          type="button"
-          onClick={() => setPicked(null)}
-          className="min-h-11 text-sm text-(--color-ink-muted) underline-offset-2 hover:underline"
-        >
-          {t('notYou')}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setMode(other)}
+        className="min-h-11 text-sm text-(--color-ink-muted) underline-offset-2 hover:underline"
+      >
+        {t(other === 'createAccount' ? 'switchToCreate' : 'switchToLogIn')}
+      </button>
     </form>
   )
 }
