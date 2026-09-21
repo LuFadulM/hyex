@@ -150,13 +150,21 @@ columns; if one is already broken, `update auth.users set confirmation_token =
 '', recovery_token = '', email_change_token_new = '', email_change = ''` repairs
 it.
 
-**Two project settings still matter.** The Email provider must be on, or every
-attempt answers `422 Email logins are disabled`. "Confirm email" must be off, or
-`signUp` returns no session and the account waits on a message from a mailer
-capped at two an hour — the sign-up form reports that case in as many words
-rather than redirecting into a screen that bounces straight back out. Anonymous
-sign-ins are off and no longer used; the log still shows
-`422: Anonymous sign-ins are disabled` from when they were.
+**"Confirm email" is on, and the app no longer cares.** That setting cannot be
+reached from here, and with it on `signUp` returns no session and the account
+waits on a link from a mailer capped at two messages an hour. A trigger
+(`20260921170823_autoconfirm_new_accounts`) confirms every account as its row
+is written, so the account is usable the instant it exists; sign-up then signs
+the person in with the credentials they just chose and they land in the
+questionnaire. The trade is deliberate: an address is never proved to belong to
+whoever typed it, which buys nothing here because nothing reads the address for
+anything else.
+
+The one setting still worth knowing about is the **Email provider**, which must
+stay on — off, and every attempt answers `422 Email logins are disabled`, which
+the form reports in as many words. Anonymous sign-ins are off and no longer
+used; the log still shows `422: Anonymous sign-ins are disabled` from when they
+were.
 
 There is no password reset, because it needs a working mailer. Resetting one is
 a support job: `update auth.users set encrypted_password = crypt('<new>',
