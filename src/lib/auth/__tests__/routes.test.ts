@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isAuthPath,
+  landingAfterSignIn,
   isProtectedPath,
   parsePath,
   routeDecision,
@@ -120,5 +121,36 @@ describe('safeRedirectPath', () => {
 
   it('refuses a malformed encoding rather than throwing', () => {
     expect(safeRedirectPath('%E0%A4%A', 'en')).toBe('/en/today')
+  })
+})
+
+describe('landingAfterSignIn', () => {
+  it('sends someone with no plan to the questionnaire, whatever was asked for', () => {
+    expect(landingAfterSignIn({ onboarded: false })).toBe('/onboarding')
+    expect(landingAfterSignIn({ onboarded: false, next: '/today' })).toBe('/onboarding')
+  })
+
+  // The bug this exists for: the landing page's "Get started" button carried
+  // next=/onboarding, so logging in on a second device walked an athlete who
+  // already had a plan back through the whole questionnaire — and saving it
+  // wrote a second set of answers and a second plan over the first.
+  it('never sends someone with a plan back into the questionnaire', () => {
+    expect(landingAfterSignIn({ onboarded: true, next: '/onboarding' })).toBe('/today')
+    expect(landingAfterSignIn({ onboarded: true, next: encodeURIComponent('/onboarding') })).toBe('/today')
+    expect(landingAfterSignIn({ onboarded: true, next: '/es/onboarding' })).toBe('/today')
+  })
+
+  it('honours anywhere else they were headed', () => {
+    expect(landingAfterSignIn({ onboarded: true, next: '/progress' })).toBe('/progress')
+    expect(landingAfterSignIn({ onboarded: true, next: encodeURIComponent('/plan/week/3') })).toBe('/plan/week/3')
+  })
+
+  it('falls back to today when nothing was asked for', () => {
+    expect(landingAfterSignIn({ onboarded: true })).toBe('/today')
+    expect(landingAfterSignIn({ onboarded: true, next: null })).toBe('/today')
+  })
+
+  it('treats a malformed next as nothing asked for, rather than throwing', () => {
+    expect(landingAfterSignIn({ onboarded: true, next: '%E0%A4%A' })).toBe('/today')
   })
 })
