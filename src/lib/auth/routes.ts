@@ -81,6 +81,41 @@ export function routeDecision(pathname: string, isSignedIn: boolean): RouteDecis
 }
 
 /**
+ * Where a successful sign-in lands.
+ *
+ * The athlete's own data decides this, never which button they tapped to get
+ * here. The landing page used to carry `next=/onboarding` on its "Get started"
+ * button, so someone who already had a plan and happened to tap that one was
+ * walked back through the whole questionnaire — and saving it wrote a second
+ * set of answers and a second plan over the first. That is exactly what
+ * happened on a second device at 17:29 on 2026-09-21.
+ *
+ * So: no plan yet means the questionnaire, whatever was asked for. With a plan,
+ * a requested destination is honoured unless it is the questionnaire itself,
+ * which nobody arriving at a sign-in screen meant to ask for. Reaching it
+ * deliberately, from Settings, still works — that path carries no `next`.
+ */
+export function landingAfterSignIn(
+  { onboarded, next }: { onboarded: boolean; next?: string | null },
+): string {
+  if (!onboarded) return '/onboarding'
+
+  const wanted = decodeNext(next)
+  if (!wanted || parsePath(wanted).segment === 'onboarding') return '/today'
+  return wanted
+}
+
+/** Decodes a `next` far enough to read its first segment; never throws. */
+function decodeNext(next?: string | null): string | null {
+  if (!next) return null
+  try {
+    return decodeURIComponent(next)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Validates a `next` parameter before redirecting to it.
  *
  * Only same-origin, locale-relative paths are allowed: an open redirect here

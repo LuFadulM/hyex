@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { defaultLocale, isLocale, type Locale } from '@/i18n/routing'
 import { classifyPasswordFailure } from '@/lib/auth/errors'
-import { safeRedirectPath } from '@/lib/auth/routes'
+import { landingAfterSignIn, safeRedirectPath } from '@/lib/auth/routes'
 import { createClient } from '@/lib/supabase/server'
 
 export interface SignInState {
@@ -51,10 +51,20 @@ export async function logIn(_previous: SignInState, formData: FormData): Promise
 
   const { email, password, locale, next } = parsed.data
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { errorKey: `auth.errors.${classifyPasswordFailure(error)}` }
 
-  redirect(safeRedirectPath(next ?? null, locale) as Route)
+  // Asked through the client that just signed in, rather than a fresh one:
+  // the session exists in this request's memory but its cookies have not been
+  // read back yet, so a new client would look signed out.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarded_at')
+    .eq('user_id', data.user.id)
+    .maybeSingle()
+
+  const target = landingAfterSignIn({ onboarded: Boolean(profile?.onboarded_at), next })
+  redirect(safeRedirectPath(target, locale) as Route)
 }
 
 /**

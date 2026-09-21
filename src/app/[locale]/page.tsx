@@ -93,7 +93,7 @@ export default async function LandingPage({
               {tl('signIn')}
             </Link>
             <Link
-              href={{ pathname: '/sign-in', query: { next: '/onboarding' } }}
+              href="/sign-in"
               className="inline-flex min-h-11 items-center rounded-full bg-(--color-accent) px-4 text-sm font-bold uppercase tracking-wide text-(--color-hero-bg)"
             >
               {tl('getStarted')}
@@ -114,7 +114,7 @@ export default async function LandingPage({
             <h1 className="font-display text-5xl leading-[0.95] font-bold uppercase sm:text-6xl md:text-7xl">{tl('headline')}</h1>
             <p className="max-w-prose text-lg text-(--color-hero-muted)">{tl('body')}</p>
             <div className="flex flex-wrap gap-3">
-              <Link href={{ pathname: '/sign-in', query: { next: '/onboarding' } }} className={primary}>
+              <Link href="/sign-in" className={primary}>
                 {tl('getStarted')}
               </Link>
               <a href="#demo" className={secondary}>
@@ -272,7 +272,7 @@ export default async function LandingPage({
             <h2 className="font-display text-4xl font-bold uppercase md:text-5xl">{tl('cta.title')}</h2>
             <p className="mt-2 text-(--color-hero-muted)">{tl('cta.body')}</p>
           </Reveal>
-          <Link href={{ pathname: '/sign-in', query: { next: '/onboarding' } }} className={primary}>
+          <Link href="/sign-in" className={primary}>
             {tl('cta.button')}
           </Link>
         </div>
@@ -297,7 +297,7 @@ export default async function LandingPage({
 
       {/* Sticky call to action on phones: never more than one thumb away. */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-(--color-hero-surface) bg-(--color-hero-bg)/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
-        <Link href={{ pathname: '/sign-in', query: { next: '/onboarding' } }} className="flex min-h-12 items-center justify-center rounded-full bg-(--color-accent) font-display text-lg font-bold uppercase tracking-wide text-(--color-hero-bg)">
+        <Link href="/sign-in" className="flex min-h-12 items-center justify-center rounded-full bg-(--color-accent) font-display text-lg font-bold uppercase tracking-wide text-(--color-hero-bg)">
           {tl('sticky.cta')}
         </Link>
       </div>

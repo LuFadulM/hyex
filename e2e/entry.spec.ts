@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { admin, hasSupabase, unique } from './helpers'
+import { admin, completeOnboarding, hasSupabase, unique } from './helpers'
 
 /**
  * Creating an account and coming back to it, the way a person actually does.
@@ -115,5 +115,38 @@ test.describe('accounts', () => {
 
     await expect(page.locator('#sign-in-error')).toContainText('already an account')
     await expect(page).toHaveURL(/\/en\/sign-in/)
+  })
+
+  test('a second device goes to the plan, not back through the questionnaire', async ({ page }) => {
+    const email = unique('entry-second-device')
+
+    await createAccountWith(page, email)
+    await page.waitForURL(/\/en\/onboarding/, { timeout: 30_000 })
+    await completeOnboarding(page, 'en', { name: `Sierra${Date.now().toString().slice(-6)}` })
+
+    // A second device: nothing remembered, and arriving through the landing
+    // page's own call to action — the path that used to carry next=/onboarding
+    // and walked an athlete who already had a plan back through every question,
+    // overwriting their answers and their plan when they finished.
+    await page.context().clearCookies()
+    await page.goto('/en')
+    await page.getByRole('link', { name: 'Get started' }).first().click()
+    await expect(page).toHaveURL(/\/en\/sign-in/)
+
+    await page.getByLabel(EMAIL).fill(email)
+    await page.getByLabel(PASSWORD).fill(PASSPHRASE)
+    await page.getByRole('button', { name: LOG_IN }).click()
+
+    await page.waitForURL(/\/en\/today/, { timeout: 30_000 })
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+    // One set of answers and one plan, still.
+    const created = await findAccount(email)
+    const { count: answers } = await admin()
+      .from('questionnaire_answers').select('*', { count: 'exact', head: true }).eq('user_id', created!.id)
+    const { count: plans } = await admin()
+      .from('plans').select('*', { count: 'exact', head: true }).eq('user_id', created!.id)
+    expect(answers, 'the questionnaire was not asked again').toBe(1)
+    expect(plans, 'and no second plan was built over the first').toBe(1)
   })
 })
