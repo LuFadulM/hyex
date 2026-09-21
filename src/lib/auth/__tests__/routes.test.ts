@@ -49,7 +49,6 @@ describe('path classification', () => {
 
   it('recognises the auth routes', () => {
     expect(isAuthPath('/es/sign-in')).toBe(true)
-    expect(isAuthPath('/en/check-email')).toBe(true)
     expect(isAuthPath('/en/today')).toBe(false)
   })
 })

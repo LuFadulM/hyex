@@ -107,94 +107,48 @@ For Google sign-in, create an OAuth client in Google Cloud, add the Supabase cal
 it prints, enable the provider in Supabase → Authentication → Providers, and set the two
 `SUPABASE_AUTH_GOOGLE_*` values.
 
-## Accounts
+## The way in
 
-Three ways in. The first sends nothing at all, which is the point.
+Tap your name, type the shared code. That is the whole of it.
 
-**Email and a password.** What the sign-in screen leads with, and what anyone
-other than the author needs. A password is typed once and travels with the
-person: it works on a second phone, a laptop and a friend's browser without a
-message being sent, and it does not queue behind a mailer that allows two
-messages an hour. Sign-up and sign-in are the same form with a toggle; a
-forgotten password falls back to the emailed link, which is the only time an
-inbox is involved.
+The sign-in screen lists the athletes by name — `athlete_roster()`, a
+`security definer` function that returns display names and nothing else, since
+a signed-out reader correctly sees no rows through row level security. Picking
+a name and entering the code signs that account in normally, so `auth.uid()` is
+what it always was and every policy in the schema keeps working untouched. The
+code *is* that account's Supabase password: it is checked by Supabase against
+its own hash, with its own rate limiting, and nothing in this app compares
+secrets itself. The session cookie is what "remembers this phone".
 
-Changing it lives in Settings, behind "Change my password". It asks for the
-current one before accepting a new one: a session cookie is something a borrowed
-or unlocked phone already has, while the old password is something only the
-owner knows, so without that check a phone left on a bench would be enough to
-lock its owner out for good.
+Changing the code lives in Settings. It asks for the current one first: a
+session cookie is something a borrowed or unlocked phone already has, while the
+old code is something only its owner knows, so without that check a phone left
+on a bench would be enough to lock its owner out for good.
 
-This needs two project settings, both under **Authentication**: the **Email**
-provider on, and **Confirm email** *off*. With confirmations on, Supabase
-withholds the session until a link is opened, which puts the inbox back in front
-of every new account and hands the mailer's cap the power to stop sign-ups
-entirely. `supabase/config.toml` sets `enable_confirmations = false` so local
-development matches. The address is for recovery; the password is the
-credential.
+Someone with no plan yet is still on the roster. Leaving them off would mean no
+way to reach onboarding, and the app already sends anyone without a finished
+questionnaire straight there.
 
-If a project's dashboard cannot be reached to set those — which happens when the
-project was provisioned through the Vercel marketplace rather than created on
-Supabase directly — the symptom is a `400 Email signups are disabled` or
-`422 Email logins are disabled` line in Authentication → Logs, on every attempt,
-no matter how many times the toggle appears to be saved. The way out is a
-project whose dashboard you own: apply the migrations to it, move the rows
-across, and repoint `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-at it. Accounts can be seeded straight into `auth.users` with
-`crypt(<password>, gen_salt('bf'))`, an `email_confirmed_at`, and a matching
+**What this replaced, and why.** There were four ways in — a magic link, a
+typed six-digit code, an anonymous session and an email-and-password form — and
+between them they locked the household out for two days. The link needed an
+inbox and a mailer capped at two messages an hour; the anonymous session needed
+one project setting; the password form needed another. For two people who train
+together that was all cost. The lock did not go away, only the ceremony: the
+code still gates the open internet out of somebody's weight, birth date and
+health answers.
+
+One setting still matters: the **Email** provider under Authentication must be
+on, because password sign-in lives under it. If it is off, every attempt logs
+`400 Email signups are disabled` or `422 Email logins are disabled` in
+Authentication → Logs, no matter how many times the toggle appears to save —
+which is what happens when the project was provisioned through the Vercel
+marketplace rather than created on Supabase directly. The way out is a project
+whose dashboard you own: apply the migrations to it, move the rows across, and
+repoint the connection. Accounts can be seeded straight into `auth.users` with
+`crypt(<code>, gen_salt('bf'))`, an `email_confirmed_at`, and a matching
 `auth.identities` row — GoTrue looks accounts up through the identity, so
-without that row a password sign-in fails on an account that otherwise looks
-complete.
-
-**Start without an email.** For someone who wants to try the app before
-deciding anything. Supabase issues an anonymous
-user, which is a real row in `auth.users`, so every row level security policy here — all of
-them keyed on `auth.uid() = user_id` — applies unchanged. No address, no link to open, no
-confirmation. The trade is real and the screen says it: the session lives in that browser,
-so clearing its data or picking up another phone loses the account. Settings offers a field
-to attach an email whenever they want, which turns the anonymous user into a permanent one
-without touching a row of their data.
-
-This needs one switch in the Supabase dashboard, under **Authentication → Sign In / Up →
-Anonymous sign-ins**. With it off, the button returns a message saying so rather than
-failing silently. Anonymous users are free on the free tier; if the app is ever abused to
-mint accounts in bulk, the same screen has a Captcha option.
-
-**Magic link**, for someone coming back on a new device. Three things break it, and the
-project's own auth log (Supabase dashboard → Logs → Auth) names which one every time. Read
-it before changing anything: each failure below is a distinct line there.
-
-`422 Email logins are disabled` — the Email provider is switched off under **Authentication
-→ Sign In / Up → Email**. Nothing is sent, nothing is retryable, and the sign-in screen now
-says exactly this rather than "we could not send the link".
-
-`429 email rate limit exceeded` — Supabase's built-in mailer is capped at a couple of
-messages an hour per project and is explicitly not for production. This is the usual cause
-of "it worked yesterday and not today": the third attempt in an hour silently sends
-nothing. The real fix is custom SMTP under **Authentication → Emails → SMTP Settings**;
-Resend's free tier (3,000 a month) and Brevo's (300 a day) both cover an app this size at
-no cost. Until then the screen tells the athlete to wait rather than to keep pressing.
-
-`403 Email link is invalid or has expired` / `One-time token not found` — the token was
-already spent. Either the link was opened in a browser other than the one that asked for it
-(PKCE: exchanging the code needs a verifier cookie held by the *requesting* browser, which a
-mail app's built-in browser does not have), or a mail scanner followed the link before the
-athlete did. A single GET spends it either way.
-
-The durable answer to that last one is the **six-digit code**, which the check-email screen
-now offers behind "the link did not work?". It is verified from the browser the athlete is
-already sitting in, so there is no verifier to be missing, and no scanner can spend it by
-looking at it. It needs the code to actually be in the email: under **Authentication →
-Emails → Magic Link**, the template must include `{{ .Token }}`. The default template is
-link-only, so add a line such as
-
-```html
-<p>Or enter this code: <strong>{{ .Token }}</strong></p>
-```
-
-Also worth checking once: **Redirect URLs** must include `https://<domain>/**`. A link whose
-redirect is not on that list is sent to the Site URL instead, which looks exactly like
-clicking the link and nothing happening.
+without that row a sign-in fails on an account that otherwise looks complete.
 
 ## Inviting people
 

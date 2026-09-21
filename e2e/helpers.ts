@@ -12,8 +12,12 @@ export function admin() {
   return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 }
 
-export async function createUser(email: string) {
-  const { data, error } = await admin().auth.admin.createUser({ email, email_confirm: true })
+export async function createUser(email: string, password?: string) {
+  const { data, error } = await admin().auth.admin.createUser({
+    email,
+    email_confirm: true,
+    ...(password ? { password } : {}),
+  })
   if (error || !data.user) throw error ?? new Error('no user')
   return data.user
 }

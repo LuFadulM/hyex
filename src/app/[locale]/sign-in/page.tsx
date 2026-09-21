@@ -1,45 +1,28 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { isLocale } from '@/i18n/routing'
+import { getRoster } from '@/lib/data/roster'
 import { SignInForm } from './sign-in-form'
-import { StartFree } from './start-free'
 
 export default async function SignInPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>
-  searchParams: Promise<{ next?: string; error?: string }>
+  searchParams: Promise<{ next?: string }>
 }) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
 
   setRequestLocale(locale)
-  const { next, error } = await searchParams
-  const t = await getTranslations('auth')
+  const { next } = await searchParams
+  const [t, roster] = await Promise.all([getTranslations('auth'), getRoster()])
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
       <h1 className="text-3xl font-bold">{t('signInTitle')}</h1>
       <p className="text-(--color-ink-muted)">{t('signInBody')}</p>
-
-      {error ? (
-        <p role="alert" className="text-sm text-(--color-plate-red)">
-          {error === 'exchange_failed' ? t('errors.linkExpired') : error === 'other_device' ? t('errors.otherDevice') : t('errors.linkInvalid')}
-        </p>
-      ) : null}
-
-      {/* Email and a password lead. They work on every device, for everybody,
-          and send nothing: no inbox to open, no mailer quota to wait on. */}
-      <SignInForm locale={locale} next={next} />
-
-      <div className="flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-(--color-border)" />
-        <span className="text-xs uppercase tracking-wide text-(--color-ink-muted)">{t('orNoEmail')}</span>
-        <span className="h-px flex-1 bg-(--color-border)" />
-      </div>
-
-      <StartFree locale={locale} />
+      <SignInForm locale={locale} next={next} roster={roster} />
     </main>
   )
 }

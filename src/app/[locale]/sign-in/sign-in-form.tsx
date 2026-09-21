@@ -3,116 +3,103 @@
 import { useActionState, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { Locale } from '@/i18n/routing'
-import { sendMagicLink, signInWithPassword, signUpWithPassword, type SignInState } from './actions'
-
-type Mode = 'signIn' | 'signUp' | 'link'
-
-const field =
-  'min-h-11 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 text-base'
+import type { Athlete } from '@/lib/data/roster'
+import { enterAsAthlete, type SignInState } from './actions'
 
 /**
- * Email and a password, with the emailed link kept as a fallback.
+ * Pick your name, type the shared code.
  *
- * The link used to be the only way back in, which meant opening an inbox on
- * every new device, every time — and the project's mailer allows two messages
- * an hour, so the second person to try in the same hour simply could not sign
- * in. A password is typed once and travels with the person, costs nothing to
- * send, and lets anyone make their own account without waiting on a queue.
+ * Two people who train together do not need to tell an app who they are by
+ * typing an address: the app already knows both of them. Tapping a name is the
+ * whole identification step, and the code is what keeps the open internet out
+ * of somebody's weight and health answers.
  *
- * The link stays because it is the only recovery path for a forgotten password
- * that does not need a support inbox, but it is no longer on the way in.
+ * Once in, the session cookie keeps this device signed in, so this screen is
+ * something each phone sees once.
  */
-export function SignInForm({ locale, next }: { locale: Locale; next?: string }) {
+export function SignInForm({
+  locale,
+  next,
+  roster,
+}: {
+  locale: Locale
+  next?: string
+  roster: Athlete[]
+}) {
   const t = useTranslations('auth')
-  const [mode, setMode] = useState<Mode>('signIn')
+  const [picked, setPicked] = useState<Athlete | null>(roster.length === 1 ? roster[0]! : null)
+  const [state, formAction, pending] = useActionState<SignInState, FormData>(enterAsAthlete, {})
 
-  const action =
-    mode === 'signIn' ? signInWithPassword : mode === 'signUp' ? signUpWithPassword : sendMagicLink
-  const [state, formAction, pending] = useActionState<SignInState, FormData>(action, {})
+  if (roster.length === 0) {
+    return <p className="text-sm text-(--color-ink-muted)">{t('noAthletes')}</p>
+  }
 
-  const submitLabel =
-    mode === 'signIn' ? t('signInButton') : mode === 'signUp' ? t('createAccount') : t('sendLink')
-  const busyLabel = mode === 'link' ? t('sending') : t('signingIn')
+  if (!picked) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm font-medium">{t('whoIsTraining')}</p>
+        {roster.map((athlete) => (
+          <button
+            key={athlete.userId}
+            type="button"
+            onClick={() => setPicked(athlete)}
+            className="min-h-14 rounded-xl bg-(--color-plate-blue) px-4 font-display text-lg font-bold text-white"
+          >
+            {athlete.displayName}
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Remounted per mode: the three actions keep separate state, and a stale
-          error from one must not sit under another's button. */}
-      <form key={mode} action={formAction} className="flex flex-col gap-3">
-        <input type="hidden" name="locale" value={locale} />
-        {next ? <input type="hidden" name="next" value={next} /> : null}
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="userId" value={picked.userId} />
+      {next ? <input type="hidden" name="next" value={next} /> : null}
 
-        <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="email">
-          {t('emailLabel')}
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            aria-describedby={state.errorKey ? 'sign-in-error' : undefined}
-            aria-invalid={state.errorKey ? true : undefined}
-            className={field}
-          />
-        </label>
+      <p className="font-display text-lg font-bold">{t('hello', { name: picked.displayName })}</p>
 
-        {mode !== 'link' && (
-          <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="password">
-            {t('passwordLabel')}
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
-              required
-              minLength={8}
-              aria-describedby={state.errorKey ? 'sign-in-error' : 'password-hint'}
-              aria-invalid={state.errorKey ? true : undefined}
-              className={field}
-            />
-          </label>
-        )}
+      <label className="flex flex-col gap-2 text-sm font-medium" htmlFor="code">
+        {t('codeLabel')}
+        <input
+          id="code"
+          name="code"
+          type="password"
+          autoComplete="current-password"
+          autoFocus
+          required
+          aria-describedby={state.errorKey ? 'sign-in-error' : 'code-hint'}
+          aria-invalid={state.errorKey ? true : undefined}
+          className="min-h-12 rounded-lg border border-(--color-border) bg-(--color-surface) px-3 text-base"
+        />
+      </label>
 
-        {mode === 'signUp' && (
-          <p id="password-hint" className="text-xs text-(--color-ink-muted)">
-            {t('passwordHint')}
-          </p>
-        )}
+      <p id="code-hint" className="text-xs text-(--color-ink-muted)">{t('codeHint')}</p>
 
-        {state.errorKey ? (
-          <p id="sign-in-error" role="alert" className="text-sm text-(--color-plate-red)">
-            {t(state.errorKey.replace('auth.', ''))}
-          </p>
-        ) : null}
+      {state.errorKey ? (
+        <p id="sign-in-error" role="alert" className="text-sm text-(--color-plate-red)">
+          {t(state.errorKey.replace('auth.', ''))}
+        </p>
+      ) : null}
 
+      <button
+        type="submit"
+        disabled={pending}
+        className="min-h-12 rounded-lg bg-(--color-plate-blue) px-4 font-semibold text-white disabled:opacity-60"
+      >
+        {pending ? t('entering') : t('enter')}
+      </button>
+
+      {roster.length > 1 && (
         <button
-          type="submit"
-          disabled={pending}
-          className="min-h-12 rounded-lg bg-(--color-plate-blue) px-4 font-semibold text-white disabled:opacity-60"
+          type="button"
+          onClick={() => setPicked(null)}
+          className="min-h-11 text-sm text-(--color-ink-muted) underline-offset-2 hover:underline"
         >
-          {pending ? busyLabel : submitLabel}
+          {t('notYou')}
         </button>
-      </form>
-
-      <div className="flex flex-col gap-1 text-sm">
-        {mode !== 'signUp' && (
-          <button type="button" onClick={() => setMode('signUp')} className="min-h-11 text-left text-(--color-plate-blue) underline-offset-2 hover:underline">
-            {t('toSignUp')}
-          </button>
-        )}
-        {mode !== 'signIn' && (
-          <button type="button" onClick={() => setMode('signIn')} className="min-h-11 text-left text-(--color-plate-blue) underline-offset-2 hover:underline">
-            {t('toSignIn')}
-          </button>
-        )}
-        {mode !== 'link' && (
-          <button type="button" onClick={() => setMode('link')} className="min-h-11 text-left text-(--color-ink-muted) underline-offset-2 hover:underline">
-            {t('toLink')}
-          </button>
-        )}
-      </div>
-
-      {mode === 'link' && <p className="text-xs text-(--color-ink-muted)">{t('magicLinkHint')}</p>}
-    </div>
+      )}
+    </form>
   )
 }
